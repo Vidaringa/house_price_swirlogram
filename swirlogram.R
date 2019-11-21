@@ -59,9 +59,21 @@ vnv$vnv <- as.numeric(vnv$vnv)
 
 # Útreikningar ------------------------------------------------------------
 
+# exponential smoothing
+# a*yt + (1-a) * s_t-1
+# s0 = y0
+
+df$exps <- df$ibudaverd_hbs
+
+for(i in 2:nrow(df)) {
+
+}
+
 df <- df %>%
         left_join(vnv) %>%
         mutate(sma = TTR::SMA(ibudaverd_hbs, 12),
+               s = ibudaverd_hbs,
+               exp =
                growth = sma/lag(sma, 12) - 1,
                acceleration = (growth - lag(growth, 12))/12,
                year = year(date),
@@ -125,3 +137,54 @@ ggplot(filter(df, year >= 2005),
         theme(legend.title = element_blank())
 
 ggsave("swirlogram_real.png")
+
+
+
+
+# Clustering --------------------------------------------------------------
+# Athuga hvort clustering algorithmar pikki upp sömu klasa
+
+# Modeling packages
+library(cluster)     # for general clustering algorithms
+library(factoextra)  # for visualizing cluster results
+
+
+fviz_nbclust(
+        df[,c(5, 6)],
+        kmeans,
+        k.max = 25,
+        method = "wss"
+)
+
+
+km <- kmeans(df[,c(5, 6)], centers = 5)
+
+
+df$kmeans <- km$cluster
+
+ggplot(filter(df, year >= 2005),
+       aes(x = growth,
+           y = acceleration,
+           col = factor(kmeans))) +
+        geom_path(lwd = 1, aes(group = 1)) +
+        geom_point()
+
+
+
+# Mclust
+library(mclust)
+
+mc <- Mclust(df[,c(5, 6)], G = 4)
+
+summary(mc)
+
+
+df$mc <- mc$classification
+
+ggplot(filter(df, year >= 2005),
+       aes(x = growth,
+           y = acceleration,
+           col = factor(mc))) +
+        geom_path(lwd = 1, aes(group = 1)) +
+        geom_point()
+

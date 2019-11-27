@@ -72,8 +72,8 @@ for(i in 2:nrow(df)) {
 df <- df %>%
         left_join(vnv) %>%
         mutate(sma = TTR::SMA(ibudaverd_hbs, 12),
-               s = ibudaverd_hbs,
-               exp =
+               # s = ibudaverd_hbs,
+               # exp =
                growth = sma/lag(sma, 12) - 1,
                acceleration = (growth - lag(growth, 12))/12,
                year = year(date),
@@ -148,16 +148,17 @@ ggsave("swirlogram_real.png")
 library(cluster)     # for general clustering algorithms
 library(factoextra)  # for visualizing cluster results
 
+df_scale <- scale(df[,c(6, 7)])
 
 fviz_nbclust(
-        df[,c(5, 6)],
+        df_scale,
         kmeans,
         k.max = 25,
         method = "wss"
 )
 
 
-km <- kmeans(df[,c(5, 6)], centers = 5)
+km <- kmeans(df_scale, centers = 6, nstart = 25)
 
 
 df$kmeans <- km$cluster
@@ -167,14 +168,24 @@ ggplot(filter(df, year >= 2005),
            y = acceleration,
            col = factor(kmeans))) +
         geom_path(lwd = 1, aes(group = 1)) +
-        geom_point()
+        geom_point() +
+        geom_vline(xintercept = 0) +
+        geom_hline(yintercept = 0) +
+        ggthemes::scale_color_tableau()
+
+
+ggplot(df,
+       aes(x = date,
+           y = ibudaverd_hbs,
+           col = factor(kmeans))) +
+        geom_path(aes(group = 1), lwd = 1.3)
 
 
 
 # Mclust
 library(mclust)
 
-mc <- Mclust(df[,c(5, 6)], G = 4)
+mc <- Mclust(df[,c(6, 7)])
 
 summary(mc)
 
@@ -188,3 +199,14 @@ ggplot(filter(df, year >= 2005),
         geom_path(lwd = 1, aes(group = 1)) +
         geom_point()
 
+
+
+
+
+# Leiguverð ---------------------------------------------------------------
+
+
+url_leiga <- "https://www.skra.is/library/Samnyttar-skrar-/Markadurinn/Markadsfrettir/Leiguvisitala/20191120-Leiguvisitala.xls"
+GET(url_leiga, write_disk("leigu_skra.xls", overwrite = TRUE))
+
+df_leiga <- readxl::read_excel("leigu_skra.xls")
